@@ -1,0 +1,17 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "cli-framework-example"
+version = "0.1.0"
+description = "cli-frameworkの階層CLIサンプル"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = ["cli-framework>=0.1,<1"]
+
+[project.scripts]
+example-cli = "example_cli.cli:cli"
+
+[tool.setuptools.packages.find]
+where = ["src"]

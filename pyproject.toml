@@ -1,0 +1,49 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "cli-framework"
+version = "0.1.0"
+description = "ディレクトリ構造から階層CLIを構築するPythonフレームワーク"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "click>=8.1,<9",
+]
+classifiers = [
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Operating System :: OS Independent",
+]
+
+[project.optional-dependencies]
+test = [
+    "pytest>=8,<9",
+]
+dev = [
+    "pytest>=8,<9",
+    "build>=1,<2",
+    "wheel>=0.45",
+    "setuptools>=68",
+    "ruff>=0.9,<1",
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+addopts = "-ra"
+
+[tool.ruff]
+target-version = "py310"
+extend-exclude = [".review-work", ".pytest-review-*", "dist", "build"]
+
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "F"]

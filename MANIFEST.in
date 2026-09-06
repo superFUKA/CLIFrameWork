@@ -1,0 +1,7 @@
+recursive-include tests *.py
+recursive-include examples *.py *.toml *.md
+recursive-include docs *.md
+include AGENTS.md ARCHITECTURE.md
+prune .review-work
+recursive-include scripts *.py
+global-exclude *.py[cod]
