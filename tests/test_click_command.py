@@ -1,13 +1,33 @@
 from __future__ import annotations
 
 from pathlib import Path
+import io
+import sys
 
 import pytest
 from fixtures.packages import write_package
 from fixtures.runner import CliRunner
 
 from cli_framework.click_command import build_click_command
+from cli_framework.click_command import _report_application_error
 from cli_framework.model import CommandDescriptor, SourceDescriptor
+
+
+def test_debug_traceback_flushes_buffered_stderr(monkeypatch) -> None:
+    import click
+
+    buffer = io.BytesIO()
+    stream = io.TextIOWrapper(buffer, encoding="utf-8")
+    monkeypatch.setattr(sys, "stderr", stream)
+    try:
+        raise RuntimeError("buffered debug failure")
+    except RuntimeError as error:
+        with pytest.raises(click.exceptions.Exit) as caught:
+            _report_application_error(error, debug=True)
+    assert caught.value.exit_code == 1
+    output = buffer.getvalue().decode("utf-8")
+    assert "Traceback (most recent call last)" in output
+    assert "RuntimeError: buffered debug failure" in output
 
 
 def _build(

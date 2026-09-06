@@ -169,3 +169,30 @@ def test_invalid_unresolved_forward_reference() -> None:
 
     with pytest.raises(DefinitionError, match="解決できません"):
         inspect_parameters(command, SOURCE)
+
+
+@pytest.mark.parametrize("keyword_only", [False, True])
+def test_none_default_preserves_annotation_and_function(keyword_only: bool) -> None:
+    namespace = {"Annotated": Annotated}
+    prefix = "*, " if keyword_only else ""
+    exec(
+        f"def command({prefix}target: Annotated[int, 'target'] = None): pass",
+        namespace,
+    )
+    command = namespace["command"]
+    defaults = command.__defaults__
+    kwdefaults = command.__kwdefaults__
+    annotations = command.__annotations__.copy()
+    with pytest.raises(DefinitionError, match="既定値"):
+        inspect_parameters(command, SOURCE)
+    assert command.__defaults__ is defaults
+    assert command.__kwdefaults__ is kwdefaults
+    assert command.__annotations__ == annotations
+
+
+def test_explicit_optional_is_still_an_unsupported_type() -> None:
+    def command(target: int | None = None) -> None:
+        pass
+
+    with pytest.raises(DefinitionError, match="対応型"):
+        inspect_parameters(command, SOURCE)

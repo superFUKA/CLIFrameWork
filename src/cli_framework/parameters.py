@@ -5,6 +5,7 @@ from __future__ import annotations
 import inspect
 from collections.abc import Callable
 from dataclasses import dataclass
+from types import SimpleNamespace
 from typing import Annotated, get_args, get_origin, get_type_hints
 
 from .errors import DefinitionError
@@ -37,7 +38,12 @@ def inspect_parameters(
 
     try:
         signature = inspect.signature(command)
-        type_hints = get_type_hints(command, include_extras=True)
+        # Resolve annotations without function defaults: Python 3.10 otherwise
+        # implicitly wraps annotations in Optional when their default is None.
+        annotations = SimpleNamespace(__annotations__=command.__annotations__)
+        type_hints = get_type_hints(
+            annotations, globalns=command.__globals__, include_extras=True
+        )
     except (NameError, TypeError, ValueError) as error:
         raise DefinitionError(
             "commandの型注釈を解決できません",

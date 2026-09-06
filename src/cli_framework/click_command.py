@@ -104,6 +104,7 @@ def _report_application_error(error: Exception, *, debug: bool) -> None:
         traceback.print_exception(
             type(error), error, error.__traceback__, file=sys.stderr
         )
+        sys.stderr.flush()
     else:
         message = str(error) or type(error).__name__
         click.echo(f"Error: {message}", err=True)
