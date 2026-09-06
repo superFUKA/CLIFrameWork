@@ -30,6 +30,11 @@ def run_with_lifecycle(
                     setup()
                 completed.append(scope)
             result = command(**values)
+            if result is not None and type(result) is not int:
+                raise TypeError(
+                    "commandの戻り値はNoneまたはintである必要があります"
+                    f"（実際: {type(result).__name__}）"
+                )
         except BaseException as error:
             primary = error
 
@@ -45,6 +50,11 @@ def _load_lifecycle(
     function_name: str,
 ) -> Callable[..., object]:
     function = load_function(source, function_name)
+    if inspect.isgeneratorfunction(function) or inspect.isasyncgenfunction(function):
+        raise DefinitionError(
+            f"{function_name}関数はgenerator / async generatorにできません",
+            source=source,
+        )
     if inspect.signature(function).parameters:
         raise DefinitionError(
             f"{function_name}関数は引数を取れません",

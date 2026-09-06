@@ -14,6 +14,40 @@ from cli_framework.model import CommandDescriptor, GroupDescriptor, SourceDescri
 from cli_framework.runtime import _attach_teardown_failure
 
 
+@pytest.mark.parametrize("value", ["bad", True])
+def test_invalid_return_is_visible_to_teardown(monkeypatch, value):
+    from cli_framework.runtime import run_with_lifecycle
+    import cli_framework.runtime as runtime
+
+    seen = []
+    def teardown():
+        seen.append(current_context().exception)
+        raise OSError("cleanup failed")
+    monkeypatch.setattr(runtime, "load_function", lambda *args: teardown)
+    scope = GroupDescriptor("root", teardown=_source("sample", Path("sample.py")))
+    with pytest.raises(TypeError, match="戻り値") as caught:
+        run_with_lifecycle(lambda: value, {}, [scope], {})
+    assert seen == [caught.value]
+
+
+@pytest.mark.parametrize("name", ["setup", "teardown"])
+@pytest.mark.parametrize("asynchronous", [False, True])
+def test_generator_lifecycle_is_rejected(monkeypatch, name, asynchronous):
+    import cli_framework.runtime as runtime
+    from cli_framework.errors import DefinitionError
+
+    def generator():
+        yield
+    async def async_generator():
+        yield
+    function = async_generator if asynchronous else generator
+    monkeypatch.setattr(runtime, "load_function", lambda *args: function)
+    with pytest.raises(DefinitionError, match="generator") as caught:
+        runtime._load_lifecycle(_source("sample", Path("sample.py")), name)
+    assert name in str(caught.value)
+    assert "sample" in str(caught.value)
+
+
 def _source(module: str, path: Path) -> SourceDescriptor:
     return SourceDescriptor(module, path, line=1)
 

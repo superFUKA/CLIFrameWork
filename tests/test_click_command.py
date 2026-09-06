@@ -30,6 +30,29 @@ def test_debug_traceback_flushes_buffered_stderr(monkeypatch) -> None:
     assert "RuntimeError: buffered debug failure" in output
 
 
+@pytest.mark.parametrize("signature, option", [
+    ("help: bool = False", "--help"),
+    ("help: str = ''", "--help"),
+    ("clean: bool = True, no_clean: bool = False", "--no-clean"),
+    ("no_clean: str = '', clean: bool = True", "--no-clean"),
+])
+def test_conflicting_options_do_not_execute(monkeypatch, tmp_path, signature, option):
+    from cli_framework import create_cli
+
+    package = write_package(monkeypatch, tmp_path, "option_conflict", {
+        "__init__.py": "def setup(): print('SETUP')\ndef teardown(): print('TEARDOWN')\n",
+        "run.py": f"def command({signature}): print('EXECUTED')\n",
+    })
+    import importlib
+    cli = create_cli(importlib.import_module(package.name))
+    for args in (["run", option], ["run", "--help"]):
+        result = CliRunner().invoke(cli, args)
+        assert result.exit_code == 1
+        assert result.stdout == ""
+        assert option in result.stderr
+        assert "衝突" in result.stderr
+
+
 def _build(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,

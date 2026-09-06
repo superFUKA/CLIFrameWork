@@ -54,6 +54,7 @@ def build_click_command(
     parameters = inspect_parameters(
         command, descriptor.source, route=(descriptor.name,)
     )
+    _validate_option_names(parameters, descriptor)
     active_bindings = {} if bindings is None else bindings
 
     def callback(**values: object) -> None:
@@ -89,10 +90,6 @@ def _invoke_command(
             if result != 0:
                 raise click.exceptions.Exit(result)
             return
-        raise TypeError(
-            "commandの戻り値はNoneまたはintである必要があります"
-            f"（実際: {type(result).__name__}）"
-        )
     except (click.exceptions.Exit, DefinitionError):
         raise
     except Exception as error:
@@ -115,6 +112,27 @@ def _click_parameters(
     parameters: Sequence[ParameterDescriptor],
 ) -> list[click.Parameter]:
     return [_click_parameter(parameter) for parameter in parameters]
+
+
+def _validate_option_names(
+    parameters: Sequence[ParameterDescriptor], descriptor: CommandDescriptor
+) -> None:
+    owners: dict[str, str] = {"--help": "標準ヘルプ"}
+    for parameter in parameters:
+        if parameter.required:
+            continue
+        name = parameter.name.replace("_", "-")
+        options = [f"--{name}"]
+        if parameter.parameter_type is bool:
+            options.append(f"--no-{name}")
+        for option in options:
+            if option in owners:
+                raise DefinitionError(
+                    f"引数 {parameter.name!r}: Option {option!r} が"
+                    f" {owners[option]!r} と衝突しています",
+                    source=descriptor.source, route=(descriptor.name,),
+                )
+            owners[option] = parameter.name
 
 
 def _click_parameter(parameter: ParameterDescriptor) -> click.Parameter:

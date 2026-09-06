@@ -63,6 +63,7 @@ cli = create_cli(commands, name="tool", bindings={"_name_": "aaaa"})
 - デフォルト値のある引数はOptionになります。
 - Option名ではPython名のunderscoreをhyphenへ変換します。
 - すべてのbool Optionに`--name`と`--no-name`を用意します。
+- `--help`は標準ヘルプ用に予約します。肯定・否定を含む生成Option名の重複は、処理を実行する前に定義エラーとして拒否します。
 - `Annotated[T, "説明"]`をヘルプ文として使用します。
 - docstringと引数説明は省略可能で、省略時に警告しません。
 - commandの説明は関数docstringを優先し、未指定ならモジュールdocstringを使います。グループ説明は`__init__.py`のモジュールdocstringです。
@@ -88,12 +89,15 @@ commands/_name_/build.py → tool aaaa build
 
 各パッケージの`__init__.py`には、任意の同期`setup`関数と`teardown`関数を定義できます。選択したコマンドに対し、setupをルートから末端へ実行し、正常終了した各setupに対応するteardownを逆順に実行します。
 
+generatorおよびasync generator形式のライフサイクル関数は未対応です。各関数の呼び出し直前に定義エラーとして拒否します。setupの定義エラーではcommandを実行せず、既に成功した外側スコープのteardownは実行します。
+
 ヘルプ表示とシェル補完の探索では、ライフサイクル関数を実行しません。teardownは`current_context().exception`を確認できます。アプリケーションはContextのstate、グローバル変数、独自DIなどを選択でき、フレームワークは共有方法を強制しません。
 
 ## 戻り値とエラーの振る舞い
 
 - `None`を返すと終了コード0で成功します。
 - 整数を返すと、その整数をプロセス終了コードとして使用します。
+- `None`と厳密な`int`以外の戻り値（boolを含む）はTypeErrorです。teardownより前に検証し、`current_context().exception`から参照できます。非ゼロの整数を返すこと自体は例外ではありません。
 - CLIの用法とルーティングに関するエラーは終了コード2です。
 - 未処理のアプリケーションエラーは終了コード1です。
 - 通常モードではtracebackを表示せず、簡潔なエラーをstderrへ出力します。
