@@ -93,3 +93,9 @@ python scripts/dev.py package-check
 生成物と個人的な作業記録はGit対象外の`.review-work/`へ残します。ディレクトリ構成、コミット前の確認方法、既存キャッシュにアクセスできない場合の手順は[開発ガイド](docs/development.md)を参照してください。
 
 製品仕様は[product-spec.md](docs/product-spec.md)、内部構造は[ARCHITECTURE.md](ARCHITECTURE.md)に分離しています。
+
+## CLIアプリ作成用スキル
+
+[build-cli-framework-app](skills/build-cli-framework-app/SKILL.md)は、このフレームワークを使うアプリの実装・テストを支援するCodexスキルです。`skills/`は配布元であり、自動インストール先ではありません。
+
+利用するには`skills/build-cli-framework-app`フォルダー全体を、ユーザー共通の`$CODEX_HOME/skills/`（未設定の場合は`%USERPROFILE%\.codex\skills\`）へコピーします。同名スキルがあれば上書き前に内容を比較してください。Codexを再起動し、`$build-cli-framework-app このフレームワークでCLIツールを作ってください`と依頼します。
