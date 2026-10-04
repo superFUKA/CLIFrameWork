@@ -19,7 +19,7 @@ command関数のdocstringをヘルプに表示します。未指定の場合は�
 
 ## 2. command関数を書く
 
-引数の型注釈には`str`、`int`、`float`、`bool`を使用できます。デフォルト値のない引数は位置引数、デフォルト値のある引数はOptionになります。Python名のunderscoreはOption名でhyphenへ変換され、`bool` Optionには肯定形と否定形が作られます。
+引数の型注釈には`str`、`int`、`float`、`bool`を使用できます。通常の引数は、デフォルト値がなければ必須の位置引数、デフォルト値があればOptionになります。Python名のunderscoreはOption名でhyphenへ変換され、`bool` Optionには肯定形と否定形が作られます。
 
 ```python
 from typing import Annotated
@@ -36,6 +36,28 @@ def command(
 ```
 
 `Annotated`の文字列は引数やOptionの説明になります。この例は`TARGET`、`--retry-count`、`--threshold`、`--verbose / --no-verbose`を生成します。
+
+### 可変長引数
+
+同じ型の値を複数受け取る場合は、`*targets: T`を使います。`T`は各要素の型で、関数内ではtupleとして利用できます。
+
+```python
+from typing import Annotated
+
+
+def command(*targets: Annotated[str, "処理対象"], jobs: int = 1) -> None:
+    print(targets, jobs)
+```
+
+この関数を`commands/build.py`に置くと、次のように実行できます。
+
+```console
+my-tool build a.cpp b.cpp --jobs 4
+```
+
+`targets`は`('a.cpp', 'b.cpp')`、`jobs`は`4`になります。値を省略した場合の`targets`は`()`です。1個以上を必須にする場合は、`def command(first: str, *rest: str)`のように先頭の必須引数を設けます。
+
+`-`で始まる値は、`my-tool build -- -a.cpp --flag`のように`--`の後へ指定します。`*targets`の後にデフォルト値のない引数を置くと、その引数は末尾の必須位置引数になります。例えば`def command(*sources: str, destination: str)`では、最後の値が`destination`へ渡ります。
 
 ## 3. CLIを公開する
 
@@ -82,6 +104,8 @@ def command() -> None:
 ## グループの直接実行
 
 グループの`__init__.py`に`command`を書くと、そのグループを直接実行できます。同じ位置に固定名の子コマンドがある場合、固定名が既定commandの位置引数より優先されます。
+
+これは可変長引数でも同じです。子名をグループ自身へ値として渡すには、`my-tool project -- build`のように`--`を置きます。必須位置引数がなく`*targets`だけを持つグループは、引数なしでも空tupleで実行されます。
 
 ## setupとteardown
 

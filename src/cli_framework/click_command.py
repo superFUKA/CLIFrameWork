@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import inspect
 import sys
 import traceback
 from collections.abc import Callable, Mapping, Sequence
@@ -24,6 +25,16 @@ class _DocumentedArgument(click.Argument):
 
 class LeafCommand(click.Command):
     """説明付き位置引数を表示できる末端Clickコマンド。"""
+
+    def get_help_option(self, ctx: click.Context) -> click.Option | None:
+        option = super().get_help_option(ctx)
+        if option is not None:
+            names = {parameter.name for parameter in self.params}
+            name = "help"
+            while name in names:
+                name = "_" + name
+            option.name = name
+        return option
 
     def format_options(
         self, ctx: click.Context, formatter: click.HelpFormatter
@@ -56,10 +67,15 @@ def build_click_command(
     )
     _validate_option_names(parameters, descriptor)
     active_bindings = {} if bindings is None else bindings
+    invoke = (
+        _bind_variadic_command(command)
+        if any(parameter.variadic for parameter in parameters)
+        else command
+    )
 
     def callback(**values: object) -> None:
         _invoke_command(
-            command,
+            invoke,
             values,
             debug=debug,
             scopes=scopes,
@@ -72,6 +88,17 @@ def build_click_command(
         params=_click_parameters(parameters),
         help=descriptor.help_text,
     )
+
+
+def _bind_variadic_command(command: Callable[..., object]) -> Callable[..., object]:
+    """名前付きの解析値を、通常引数・*args・キーワード専用引数へ戻す。"""
+    signature = inspect.signature(command)
+
+    def invoke(**values: object) -> object:
+        bound = inspect.BoundArguments(signature, values)
+        return command(*bound.args, **bound.kwargs)
+
+    return invoke
 
 
 def _invoke_command(
@@ -119,7 +146,7 @@ def _validate_option_names(
 ) -> None:
     owners: dict[str, str] = {"--help": "標準ヘルプ"}
     for parameter in parameters:
-        if parameter.required:
+        if parameter.is_argument:
             continue
         name = parameter.name.replace("_", "-")
         options = [f"--{name}"]
@@ -136,11 +163,12 @@ def _validate_option_names(
 
 
 def _click_parameter(parameter: ParameterDescriptor) -> click.Parameter:
-    if parameter.required:
+    if parameter.is_argument:
         argument = _DocumentedArgument(
             [parameter.name],
             type=parameter.parameter_type,
-            required=True,
+            required=parameter.required,
+            nargs=-1 if parameter.variadic else 1,
             help_text=parameter.help_text,
         )
         argument.name = parameter.name

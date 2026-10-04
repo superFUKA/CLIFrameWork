@@ -19,8 +19,9 @@ description: cli_framework（CLIFrameWorkリポジトリ）のcreate_cliを使�
 - 公開APIは`from cli_framework import create_cli, current_context`などパッケージ直下から使う。内部モジュールをimportしない。
 - import可能なcommandsパッケージを作り、1つの組み立て場所で`create_cli(commands, name=...)`を呼ぶ。独自の登録表やClickデコレーターは必要ない。
 - 通常のモジュールのトップレベル`def command`が末端コマンド、サブパッケージがグループになる。グループ`__init__.py`のcommandは既定処理。固定名の子コマンドは既定処理の位置引数より優先される。
-- commandは同期の通常関数にする。引数は`str`、`int`、`float`、`bool`のみ。Path等が必要なら文字列で受け、関数本体で変換する。Optional、Enum、Literal、コレクション、可変長・位置専用引数は使用しない。
-- 既定値なしは必須位置引数、既定値ありはOption。既定値の型は注釈と厳密に合わせる（`int = None`や`int = False`は不可）。説明は`Annotated[T, "説明"]`、コマンド説明は関数docstringへ置く。
+- commandは同期の通常関数にする。引数と可変長引数の要素型は`str`、`int`、`float`、`bool`のみ。Path等が必要なら文字列で受け、関数本体で変換する。Optional、Enum、Literal、コレクション型注釈、可変長キーワード引数`**kwargs`、位置専用引数は使用しない。
+- 通常の引数は既定値なしなら必須位置引数、既定値ありならOption。既定値の型は注釈と厳密に合わせる（`int = None`や`int = False`は不可）。説明は`Annotated[T, "説明"]`、コマンド説明は関数docstringへ置く。
+- 可変長位置引数`*targets: T`は0個以上の同型の値をtupleとして受け取る。1個以上が必須なら`first: T, *rest: T`とする。後続の既定値なしキーワード専用引数は末尾の必須位置引数になる。`-`で始まる値やグループの子名を値として渡す場合は`--`を使う。
 - Optionの`_`は`-`に変換される。boolは`--name`と`--no-name`の対になる。`--help`を生成するhelp Optionは作らない。全Optionの肯定・否定名を比較し、`clean`と`no_clean`のような衝突を避ける。位置引数のhelpという名前まで一律に禁止しない。
 - 戻り値はNoneまたは厳密なintとする。boolや文字列を返さない。利用者入力エラーや例外の扱いはアプリの契約に合わせる。
 - import時にはファイル更新、外部コマンド、通信、Context取得を行わない。詳細ヘルプがcommandモジュールをimportするため、実処理はcommand/setupへ置く。

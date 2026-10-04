@@ -26,6 +26,11 @@ class ParameterDescriptor:
     required: bool
     default: SupportedValue | None = None
     help_text: str | None = None
+    variadic: bool = False
+
+    @property
+    def is_argument(self) -> bool:
+        return self.required or self.variadic
 
 
 def inspect_parameters(
@@ -65,11 +70,8 @@ def _inspect_parameter(
     source: SourceDescriptor,
     route: tuple[str, ...],
 ) -> ParameterDescriptor:
-    if parameter.kind in {
-        inspect.Parameter.VAR_POSITIONAL,
-        inspect.Parameter.VAR_KEYWORD,
-    }:
-        _invalid(parameter, "可変長引数には対応していません", source, route)
+    if parameter.kind is inspect.Parameter.VAR_KEYWORD:
+        _invalid(parameter, "可変長キーワード引数には対応していません", source, route)
     if parameter.kind is inspect.Parameter.POSITIONAL_ONLY:
         _invalid(parameter, "位置専用引数には対応していません", source, route)
     if parameter.name not in type_hints:
@@ -81,9 +83,10 @@ def _inspect_parameter(
         source,
         route,
     )
-    required = parameter.default is inspect.Parameter.empty
+    variadic = parameter.kind is inspect.Parameter.VAR_POSITIONAL
+    has_default = parameter.default is not inspect.Parameter.empty
     default: SupportedValue | None = None
-    if not required:
+    if has_default:
         if type(parameter.default) is not parameter_type:
             _invalid(
                 parameter,
@@ -96,9 +99,10 @@ def _inspect_parameter(
     return ParameterDescriptor(
         name=parameter.name,
         parameter_type=parameter_type,
-        required=required,
+        required=not has_default and not variadic,
         default=default,
         help_text=help_text,
+        variadic=variadic,
     )
 
 

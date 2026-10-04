@@ -125,6 +125,9 @@ class RouteGroup(click.Group):
             raise click.UsageError("Missing command.", ctx)
         if self.default_command is not None and self._uses_default(args):
             self._invoke_default = True
+            # A default command parses its own options, including those after
+            # positional values; Group's default would consume them as values.
+            ctx.allow_interspersed_args = self.default_command.allow_interspersed_args
             return self.default_command.parse_args(ctx, args)
         self._invoke_default = False
         return super().parse_args(ctx, args)

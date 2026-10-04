@@ -123,16 +123,48 @@ def test_invalid_default_must_exactly_match_annotation(default: object) -> None:
             inspect_parameters(command, SOURCE)
 
 
-def test_invalid_variadic_positional_parameter() -> None:
+@pytest.mark.parametrize("annotation", [str, int, float, bool])
+def test_variadic_positional_parameter_uses_element_type(annotation: type) -> None:
     def command(*targets: str) -> None:
         pass
 
-    with pytest.raises(DefinitionError, match="可変長"):
-        inspect_parameters(command, SOURCE)
+    command.__annotations__["targets"] = annotation
+    parameters = inspect_parameters(command, SOURCE)
+    assert parameters == (ParameterDescriptor("targets", annotation, False, variadic=True),)
+    assert parameters[0].is_argument
+
+
+def test_variadic_parameters_preserve_description_and_other_parameter_kinds() -> None:
+    def command(
+        first: str, *targets: Annotated[int, "処理対象"], jobs: int = 2, output: str,
+    ) -> None:
+        pass
+
+    assert inspect_parameters(command, SOURCE) == (
+        ParameterDescriptor("first", str, True),
+        ParameterDescriptor("targets", int, False, help_text="処理対象", variadic=True),
+        ParameterDescriptor("jobs", int, False, default=2),
+        ParameterDescriptor("output", str, True),
+    )
+
+
+@pytest.mark.parametrize("annotation", [None, list[str], Annotated[str, 123]])
+def test_invalid_variadic_annotation_reports_parameter_and_source(annotation: object) -> None:
+    def command(*targets: str) -> None:
+        pass
+
+    if annotation is None:
+        del command.__annotations__["targets"]
+    else:
+        command.__annotations__["targets"] = annotation
+    with pytest.raises(DefinitionError, match="targets") as captured:
+        inspect_parameters(command, SOURCE, route=("build",))
+    assert captured.value.source == SOURCE
+    assert captured.value.route == ("build",)
 
 
 def test_invalid_variadic_keyword_parameter() -> None:
-    def command(**options: str) -> None:
+    def command(*targets: str, **options: str) -> None:
         pass
 
     with pytest.raises(DefinitionError, match="可変長"):
