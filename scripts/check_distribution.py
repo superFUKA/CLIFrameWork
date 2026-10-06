@@ -1,4 +1,4 @@
-"""Build and exercise installed distributions, without importing the checkout."""
+"""配布物をビルドし、インストール先のパッケージで動作を検証します。"""
 from __future__ import annotations
 
 import argparse
@@ -39,17 +39,17 @@ def dependency_wheels(destination: Path) -> None:
                 if entry.name == "RECORD" or entry.suffix == ".pyc":
                     continue
                 archive.write(dist.locate_file(entry), entry.as_posix())
-        print(f"Offline dependency: {name} {dist.version}")
+        print(f"オフライン検証用の依存: {name} {dist.version}")
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--offline", action="store_true")
+    parser.add_argument("--offline", action="store_true", help="インストール済みの依存を再利用し、ネットワーク取得を省略します")
     args = parser.parse_args()
     work_root = ROOT / ".review-work"
     work_root.mkdir(exist_ok=True)
     work = Path(tempfile.mkdtemp(prefix="distribution-", dir=work_root))
-    print(f"Artifacts: {work}", flush=True)
+    print(f"成果物: {work}", flush=True)
     env = dict(os.environ, PYTHONIOENCODING="utf-8", PYTHONUTF8="1")
     env.pop("PYTHONPATH", None)
     env.pop("PYTHONHOME", None)
@@ -97,8 +97,8 @@ def main() -> None:
         assert "--target" in help_text and "release" in help_text, help_text
         result = subprocess.run([*prefix, "missing"], cwd=work, env=env,
                                 capture_output=True, text=True, encoding="utf-8")
-        assert result.returncode == 2 and result.stdout == "" and "No such command" in result.stderr
-    print("Distribution checks passed (console entry point and python -m).")
+        assert result.returncode == 2 and result.stdout == "" and "不明なコマンドです" in result.stderr
+    print("配布物の検証に成功しました（コンソールのエントリーポイントとpython -m）。")
 
 
 if __name__ == "__main__":

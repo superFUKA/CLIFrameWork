@@ -222,7 +222,7 @@ def test_lifecycle_failure_uses_stderr_and_preserves_the_primary_error(
 
     assert result.exit_code == 1
     assert result.stdout == "started\n"
-    assert result.stderr == "Error: run failed\n"
+    assert result.stderr == "エラー: run failed\n"
     assert "Traceback" not in result.stderr
     assert "cleanup failed" not in result.stderr
     assert events == ["setup", "command", "teardown:run failed"]
@@ -260,7 +260,7 @@ def test_exit_codes_distinguish_success_custom_usage_and_application_failure(
     assert failure.exit_code == 1
     assert success.stderr == ""
     assert custom.stderr == ""
-    assert "Error:" in usage.stderr
-    assert "Error:" in routing.stderr
+    assert "エラー:" in usage.stderr
+    assert "エラー:" in routing.stderr
     assert failure.stdout == ""
-    assert failure.stderr == "Error: application failed\n"
+    assert failure.stderr == "エラー: application failed\n"

@@ -10,6 +10,7 @@ from typing import Any
 
 import click
 
+from .click_localization import JapaneseCommandMixin, JapaneseOption
 from .loading import load_command
 from .errors import DefinitionError
 from .model import CommandDescriptor, GroupDescriptor
@@ -23,7 +24,7 @@ class _DocumentedArgument(click.Argument):
         self.help_text = help_text
 
 
-class LeafCommand(click.Command):
+class LeafCommand(JapaneseCommandMixin, click.Command):
     """説明付き位置引数を表示できる末端Clickコマンド。"""
 
     def get_help_option(self, ctx: click.Context) -> click.Option | None:
@@ -45,7 +46,7 @@ class LeafCommand(click.Command):
             if isinstance(item, _DocumentedArgument) and item.help_text is not None
         ]
         if arguments:
-            with formatter.section("Arguments"):
+            with formatter.section("引数"):
                 formatter.write_dl(
                     [(item.human_readable_name, item.help_text or "") for item in arguments]
                 )
@@ -87,6 +88,7 @@ def build_click_command(
         callback=callback,
         params=_click_parameters(parameters),
         help=descriptor.help_text,
+        options_metavar="[オプション]",
     )
 
 
@@ -131,7 +133,7 @@ def _report_application_error(error: Exception, *, debug: bool) -> None:
         sys.stderr.flush()
     else:
         message = str(error) or type(error).__name__
-        click.echo(f"Error: {message}", err=True)
+        click.echo(f"エラー: {message}", err=True)
     raise click.exceptions.Exit(1) from error
 
 
@@ -177,11 +179,12 @@ def _click_parameter(parameter: ParameterDescriptor) -> click.Parameter:
     declarations = [f"--{option_name}"]
     kwargs: dict[str, object] = {
         "default": parameter.default,
-        "show_default": True,
+        "show_default": False,
         "help": parameter.help_text,
     }
     if parameter.parameter_type is bool:
         declarations = [f"--{option_name}/--no-{option_name}"]
     else:
         kwargs["type"] = parameter.parameter_type
-    return click.Option([*declarations, parameter.name], **kwargs)
+        kwargs["metavar"] = {str: "文字列", int: "整数", float: "数値"}[parameter.parameter_type]
+    return JapaneseOption([*declarations, parameter.name], **kwargs)

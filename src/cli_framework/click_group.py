@@ -8,11 +8,12 @@ from typing import Any
 import click
 
 from .click_command import build_click_command, _report_application_error
+from .click_localization import JapaneseCommandMixin
 from .errors import DefinitionError
 from .model import CommandDescriptor, GroupDescriptor, RouteDescriptor
 
 
-class LazyLeafCommand(click.Command):
+class LazyLeafCommand(JapaneseCommandMixin, click.Command):
     """パラメーターが必要になるまで利用者モジュールを読み込まない末端。"""
 
     def __init__(
@@ -56,7 +57,7 @@ class LazyLeafCommand(click.Command):
         return self._load().get_usage(ctx)
 
 
-class RouteGroup(click.Group):
+class RouteGroup(JapaneseCommandMixin, click.Group):
     """対応する中立ルート記述子と任意の既定commandを持つグループ。"""
 
     def __init__(
@@ -82,7 +83,8 @@ class RouteGroup(click.Group):
         self._invoke_default = False
         self.debug = debug
         super().__init__(
-            name=descriptor.name, help=descriptor.help_text, commands=commands
+            name=descriptor.name, help=descriptor.help_text, commands=commands,
+            options_metavar="[オプション]", subcommand_metavar="コマンド [引数]...",
         )
 
     def list_commands(self, ctx: click.Context) -> list[str]:
@@ -106,7 +108,7 @@ class RouteGroup(click.Group):
             formatter.write_usage(
                 ctx.command_path,
                 " ".join(command.collect_usage_pieces(ctx)),
-                prefix="Default usage: ",
+                prefix="直接実行の使い方: ",
             )
 
     def format_options(self, ctx: click.Context, formatter: click.HelpFormatter) -> None:
@@ -115,18 +117,18 @@ class RouteGroup(click.Group):
             return
         command = self.default_command._load()
         if command.help and command.help != self.help:
-            with formatter.section("Default command"):
+            with formatter.section("既定のコマンド"):
                 formatter.write_text(command.help)
         command.format_options(ctx, formatter)
         self.format_commands(ctx, formatter)
 
     def parse_args(self, ctx: click.Context, args: list[str]) -> list[str]:
         if not args and self.default_command is None and not ctx.resilient_parsing:
-            raise click.UsageError("Missing command.", ctx)
+            raise click.UsageError("コマンドを指定してください。", ctx)
         if self.default_command is not None and self._uses_default(args):
             self._invoke_default = True
-            # A default command parses its own options, including those after
-            # positional values; Group's default would consume them as values.
+            # 既定コマンド自身が、位置引数の後にあるオプションも解析する。
+            # Groupの既定動作では、それらを位置引数の値として消費してしまう。
             ctx.allow_interspersed_args = self.default_command.allow_interspersed_args
             return self.default_command.parse_args(ctx, args)
         self._invoke_default = False

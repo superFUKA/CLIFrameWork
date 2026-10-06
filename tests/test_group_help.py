@@ -189,4 +189,4 @@ def test_nested_unknown_command_is_a_usage_error() -> None:
     result = CliRunner().invoke(build_click_group(root), ["missing"])
 
     assert result.exit_code == 2
-    assert "No such command" in result.stderr
+    assert "不明なコマンドです" in result.stderr

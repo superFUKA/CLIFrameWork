@@ -83,7 +83,7 @@ def test_argument_is_required_typed_and_passed_by_name(
     missing = CliRunner().invoke(command, [])
     result = CliRunner().invoke(command, ["4"])
     assert missing.exit_code == 2
-    assert "Missing argument" in missing.stderr
+    assert "必須の引数がありません" in missing.stderr
     assert missing.stdout == ""
     assert result.exit_code == 0
     assert result.output == "4:int\n"
@@ -181,7 +181,7 @@ def test_help_uses_docstring_and_parameter_descriptions(
     assert "プロジェクトをビルドします。" in result.output
     assert "SOURCE" in result.output
     assert "入力元" in result.output
-    assert "--jobs INTEGER" in result.output
+    assert "--jobs 整数" in result.output
     assert "並列数" in result.output
     assert "--clean / --no-clean" in result.output
     assert "先に削除する" in result.output
@@ -197,7 +197,7 @@ def test_help_allows_omitted_descriptions_without_warning(
     result = CliRunner().invoke(command, ["--help"])
     assert result.exit_code == 0
     assert "warning" not in result.output.lower()
-    assert "--jobs INTEGER" in result.output
+    assert "--jobs 整数" in result.output
 
 
 @pytest.mark.parametrize(("return_value", "exit_code"), [("None", 0), ("0", 0), ("7", 7)])
@@ -248,7 +248,7 @@ def test_exception_is_concise_and_written_only_to_stderr(
     result = CliRunner().invoke(command, [])
     assert result.exit_code == 1
     assert result.stdout == "before\n"
-    assert result.stderr == "Error: 壊れました\n"
+    assert result.stderr == "エラー: 壊れました\n"
     assert "Traceback" not in result.stderr
 
 

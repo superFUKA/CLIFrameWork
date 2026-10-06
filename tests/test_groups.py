@@ -108,7 +108,7 @@ def test_precedence_keeps_child_usage_error_instead_of_falling_back(
     result = CliRunner().invoke(build_click_group(root), ["build"])
 
     assert result.exit_code == 2
-    assert "Missing argument" in result.stderr
+    assert "必須の引数がありません" in result.stderr
 
 
 def test_default_help_loads_signature_without_running_lifecycle(
@@ -139,10 +139,10 @@ def test_default_help_loads_signature_without_running_lifecycle(
     assert "グループの説明。" in result.stdout
     assert marker.exists()
     assert result.stderr == ""
-    assert "Default usage:" in result.stdout
+    assert "直接実行の使い方:" in result.stdout
     assert "TARGET" in result.stdout
     assert "Target description" in result.stdout
-    assert "--jobs INTEGER" in result.stdout
+    assert "--jobs 整数" in result.stdout
 
 
 def test_missing_default_command_makes_direct_execution_a_usage_error() -> None:
@@ -151,4 +151,4 @@ def test_missing_default_command_makes_direct_execution_a_usage_error() -> None:
     result = CliRunner().invoke(build_click_group(root), [])
 
     assert result.exit_code == 2
-    assert "Usage:" in result.stderr
+    assert "使い方:" in result.stderr

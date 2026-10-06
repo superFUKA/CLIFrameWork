@@ -23,6 +23,7 @@ commandパッケージ
 - **ルートモデル**：Clickから独立して、グループ、末端コマンド、ソースモジュール、docstring、bindingプレースホルダーを表現します。
 - **引数アダプター**：対応する関数シグネチャをClickの引数とOptionへ変換します。
 - **Clickアダプター**：ルート記述子をネストした遅延読み込み対応のClickコマンドとグループとして公開します。
+- **日本語表示（Clickアダプター内部）**：`click_localization.py`でヘルプと用法エラーを表示します。解析はClickへ委譲し、他のClickアプリケーションの表示設定を変更しません。
 - **ランタイム**：現在のContextを設定し、setup、command、teardownを実行して、結果や失敗を終了動作へ変換します。
 - **Context**：読み取り専用bindings、任意利用の可変state、teardown中の例外を公開します。
 

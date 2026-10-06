@@ -112,3 +112,9 @@ Clickがコマンドの詳細定義を必要としたとき、またはコマン
 返却ルートの通常CLI実行では遅延した定義エラーもstderrと終了コード1へ変換し、debug時はtracebackを表示します。Pythonからの詳細取得、および`main(..., standalone_mode=False)`では`DefinitionError`をそのまま送出します。
 
 用法表示と終了コード2は引き続きClickが担当します。ランタイムアダプターは予期しないアプリケーション例外を簡潔なstderr出力と終了コード1へ変換します。`debug=True`の場合は完全なtracebackを維持します。`KeyboardInterrupt`やプロセス終了用の例外を通常のアプリケーション失敗として捕捉しません。
+
+## 日本語表示
+
+Clickアダプター内の`click_localization.py`に表示の処理をまとめます。専用ContextとHelpFormatterで見出しと用法を表示し、生成するOptionで型表示名と既定値のラベルを指定します。利用者の説明文全体に対する文字列置換は行いません。
+
+CLIの入口ではClickの非standalone実行を利用し、用法例外の構造化された引数情報から日本語の案内を生成します。構造化情報がない標準診断はメッセージ全体のパターンに一致するときだけ変換し、未知の診断は原文を保ちます。解析・補完・終了コードの判定はClickに委ね、`standalone_mode=False`では元のClick例外を呼び出し側へ送出します。グローバルなgettextやClickのクラスを差し替えません。

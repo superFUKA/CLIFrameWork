@@ -69,10 +69,10 @@ def test_variadic_arguments_bind_to_the_python_signature(
 @pytest.mark.parametrize(
     ("signature", "args", "fragment"),
     [
-        ("*targets: int", ["1", "bad"], "Invalid value"),
-        ("*targets: str", ["--unknown"], "No such option"),
-        ("first: str, *targets: str", [], "Missing argument"),
-        ("*targets: str, output: str", [], "Missing argument"),
+        ("*targets: int", ["1", "bad"], "無効な値です"),
+        ("*targets: str", ["--unknown"], "不明なオプションです"),
+        ("first: str, *targets: str", [], "必須の引数がありません"),
+        ("*targets: str, output: str", [], "必須の引数がありません"),
     ],
 )
 def test_variadic_usage_errors_do_not_run_lifecycle(
@@ -110,7 +110,7 @@ def test_variadic_help_preserves_lazy_loading_and_skips_lifecycle(
     assert result.exit_code == 0
     assert "[TARGETS]..." in result.stdout
     assert "Target description" in result.stdout
-    assert "--jobs INTEGER" in result.stdout
+    assert "--jobs 整数" in result.stdout
     assert result.stderr == ""
     assert not {"SETUP", "COMMAND", "TEARDOWN"}.intersection(result.stdout.splitlines())
 
@@ -161,7 +161,7 @@ def test_variadic_group_keeps_child_precedence(monkeypatch, tmp_path, args, exit
     assert result.exit_code == exit_code, result.output
     assert result.stdout == expected
     if exit_code:
-        assert "Missing argument" in result.stderr
+        assert "必須の引数がありません" in result.stderr
     else:
         assert result.stderr == ""
 
@@ -232,7 +232,7 @@ def test_variadic_failure_keeps_original_exception_when_teardown_fails(
         assert "Traceback" in result.stderr
         assert "RuntimeError: command failed" in result.stderr
     else:
-        assert result.stderr == "Error: command failed\n"
+        assert result.stderr == "エラー: command failed\n"
 
 
 def test_variadic_completion_still_targets_argument_after_multiple_values(

@@ -97,14 +97,14 @@ def test_example_has_useful_help_at_every_level(
     assert project_help.exit_code == 0
     assert "bindingで選択されるプロジェクト" in project_help.stdout
     assert "release" in project_help.stdout
-    assert "--target TEXT" in project_help.stdout
+    assert "--target 文字列" in project_help.stdout
     assert release_help.exit_code == 0
     assert "リリース成果物を操作します。" in release_help.stdout
     assert "build" in release_help.stdout
     assert command_help.exit_code == 0
     assert "リリース成果物をビルドします。" in command_help.stdout
     assert "入力元" in command_help.stdout
-    assert "--jobs INTEGER" in command_help.stdout
+    assert "--jobs 整数" in command_help.stdout
     assert "--clean / --no-clean" in command_help.stdout
     assert events_module.events == []
 

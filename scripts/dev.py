@@ -1,4 +1,4 @@
-"""Shared local and CI checks: test, lint, check, package-check."""
+"""ローカルとCIで共通の検証を実行します: test, lint, check, package-check。"""
 from __future__ import annotations
 
 import argparse
@@ -26,7 +26,8 @@ def test(arguments: list[str]) -> int:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("command", choices=("test", "lint", "check", "package-check"))
+    parser.add_argument("command", choices=("test", "lint", "check", "package-check"),
+                        help="test: テスト、lint: 静的検査、check: 両方、package-check: 配布物の検証")
     args, extra = parser.parse_known_args()
     if extra[:1] == ["--"]:
         extra = extra[1:]
@@ -37,7 +38,7 @@ def main() -> int:
     if args.command == "package-check":
         return run([str(ROOT / "scripts" / "check_distribution.py"), *extra])
     if extra:
-        parser.error("check does not accept extra arguments")
+        parser.error("checkには追加の引数を指定できません")
     return run(["-m", "ruff", "check", "."]) or test([])
 
 
