@@ -101,6 +101,25 @@ def command() -> None:
     print(current_context().get_binding("_project_"))
 ```
 
+## 拡張パッケージを重ねる
+
+別の場所にあるcommandパッケージを、本体のグループ配下へ重ねて読み込めます。
+
+```text
+commands/                 file_plugin/
+    file/                     copy.py
+        list.py
+```
+
+```python
+from my_tool import commands
+from my_plugins import file_plugin
+
+cli = create_cli(commands, name="my-tool", extensions=[("file", file_plugin)])
+```
+
+これにより`my-tool file list`と`my-tool file copy`の両方が公開されます。拡張先パスは`project/file`のように`/`で区切り、空文字ならルートへ重ねます。同名のコマンドや、同じグループの`setup`・`teardown`・`command`の重複は定義エラーです。
+
 ## グループの直接実行
 
 グループの`__init__.py`に`command`を書くと、そのグループを直接実行できます。同じ位置に固定名の子コマンドがある場合、固定名が既定commandの位置引数より優先されます。

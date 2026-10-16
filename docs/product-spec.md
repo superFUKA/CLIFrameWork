@@ -88,6 +88,26 @@ commands/_name_/build.py → tool aaaa build
 - commandは`current_context().get_binding("_name_")`で値を取得します。
 - binding文字列の取得方法と更新方法はフレームワークの対象外です。
 
+## 拡張パッケージの振る舞い
+
+本体とは別の場所にあるcommandパッケージを、本体の任意のグループ配下へ重ねて1つのCLIにできます。
+
+```python
+cli = create_cli(commands, extensions=[("file", file_plugin)])
+```
+
+```text
+commands/file/list.py       → tool file list
+file_plugin/copy.py         → tool file copy
+file_plugin/sub/move.py     → tool file sub move
+```
+
+- 拡張先パスは本体のディレクトリ区間を`/`で区切って指定します。空文字はルートを表します。存在しない区間はグループとして作成します。
+- 拡張パッケージの内容は、拡張先ディレクトリ配下に置いた場合と同じ規則でコマンド・グループになります。bindingも同様に適用します。
+- 拡張パッケージ直下の`__init__.py`は拡張先グループの定義に統合されます。同じグループの`command`、`setup`、`teardown`は全体で1つまでです。グループ説明は本体を優先し、本体にない場合は拡張パッケージのものを使います。
+- 拡張による同階層の名前衝突、同じ定義の重複、本体・拡張パッケージ同士の包含関係や重複指定は定義エラーです。
+- 1つの拡張先に複数の拡張パッケージを指定できます。`extensions`には`(拡張先パス, パッケージ)`の組の列、または拡張先パスからパッケージへのmappingを渡します。
+
 ## ライフサイクルの振る舞い
 
 各パッケージの`__init__.py`には、任意の同期`setup`関数と`teardown`関数を定義できます。選択したコマンドに対し、setupをルートから末端へ実行し、正常終了した各setupに対応するteardownを逆順に実行します。

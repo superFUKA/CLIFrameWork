@@ -29,6 +29,7 @@ description: cli_framework（CLIFrameWorkリポジトリ）のcreate_cliを使�
 ## 必要な場合だけ使う機能
 
 - Binding：`_project_`等の経路区間全体を、`bindings={"_project_": "alpha"}`で構築時に置換する。実行時の自由な位置引数ではない。空白・NUL・先頭ハイフン・空文字・同階層の名前衝突を避ける。
+- 拡張：別の場所のcommandパッケージは`extensions=[("file", plugin)]`で本体の`file`配下へ重ねる。拡張先は本体のディレクトリ区間を`/`区切り（空文字はルート）。同名コマンドと、同じグループのsetup/teardown/commandの重複を避ける。
 - Lifecycle：グループのsetup/teardownは引数なしの同期通常関数。generator、async generator、contextmanagerデコレーターは使わない。setupは外から内、teardownは逆順。失敗したsetupのスコープのteardownを当てにせず、そのsetup内で部分取得リソースを片付ける。
 - Context：実行中だけ`current_context()`を呼び、共有値はstate、binding参照はget_bindingへ。不正な戻り値も失敗としてteardownからexceptionで観測できる版を用いる。非ゼロintの返却自体は例外ではないので、exceptionだけを終了コードの成否判定に使わない。
 

@@ -10,10 +10,19 @@ from .errors import DefinitionError
 from .model import CommandDescriptor, GroupDescriptor
 
 
+@dataclass(frozen=True, slots=True)
+class RouteSource:
+    """拡張先グループへ重ねるパッケージの探索結果。"""
+
+    package_name: str
+    scans: tuple[ModuleScan, ...]
+    mount: tuple[str, ...] = ()
+
+
 @dataclass(slots=True)
 class _GroupNode:
     name: str
-    scan: ModuleScan | None = None
+    scans: list[tuple[int, ModuleScan]] = field(default_factory=list)
     groups: dict[str, _GroupNode] = field(default_factory=dict)
     commands: dict[str, CommandDescriptor] = field(default_factory=dict)
 
@@ -21,24 +30,35 @@ class _GroupNode:
 def build_route_tree(
     package_name: str,
     scans: Iterable[ModuleScan],
+    extensions: Iterable[RouteSource] = (),
 ) -> GroupDescriptor:
-    """探索結果をネストした未解決ルートへ変換する。"""
+    """探索結果をネストした未解決ルートへ変換する。
+
+    拡張パッケージの内容は、本体の拡張先グループ配下にあるかのように統合する。
+    """
 
     if not package_name:
         raise DefinitionError("ルートパッケージ名が空です")
 
     root = _GroupNode(package_name.rsplit(".", 1)[-1])
-    for scan in scans:
-        parts = _relative_module_parts(package_name, scan)
+    sources = (RouteSource(package_name, tuple(scans)), *extensions)
+    for index, source in enumerate(sources):
+        _add_source(root, index, source)
+    return _freeze_group(root, (root.name,), keep_empty=True)
+
+
+def _add_source(root: _GroupNode, index: int, source: RouteSource) -> None:
+    for scan in source.scans:
+        parts = (*source.mount, *_relative_module_parts(source.package_name, scan))
         if scan.is_package:
             node = _ensure_group(root, parts)
-            if node.scan is not None:
+            if any(previous == index for previous, _ in node.scans):
                 raise DefinitionError(
                     "同じパッケージの定義が複数あります",
                     route=(root.name, *parts),
                     source=scan.source,
                 )
-            node.scan = scan
+            node.scans.append((index, scan))
         elif scan.command is not None:
             if not parts:
                 raise DefinitionError(
@@ -59,8 +79,6 @@ def build_route_tree(
                 source=scan.command,
                 help_text=scan.command_docstring or scan.docstring,
             )
-
-    return _freeze_group(root, (root.name,), keep_empty=True)
 
 
 def _relative_module_parts(
@@ -117,23 +135,44 @@ def _freeze_group(
             children.append(child)
     children.sort(key=lambda child: child.name)
 
-    scan = node.scan
+    scans = tuple(scan for _, scan in node.scans)
     command = None
-    if scan is not None and scan.command is not None:
+    command_scan = _single_definition(scans, "command", route)
+    if command_scan is not None and command_scan.command is not None:
         command = CommandDescriptor(
             name=node.name,
-            source=scan.command,
-            help_text=scan.command_docstring or scan.docstring,
+            source=command_scan.command,
+            help_text=command_scan.command_docstring or command_scan.docstring,
         )
+    setup_scan = _single_definition(scans, "setup", route)
+    teardown_scan = _single_definition(scans, "teardown", route)
 
     if not keep_empty and not children and command is None:
         return GroupDescriptor(name=node.name)
     return GroupDescriptor(
         name=node.name,
-        source=scan.source if scan is not None else None,
-        help_text=scan.docstring if scan is not None else None,
-        setup=scan.setup if scan is not None else None,
-        teardown=scan.teardown if scan is not None else None,
+        source=scans[0].source if scans else None,
+        help_text=next(
+            (scan.docstring for scan in scans if scan.docstring is not None),
+            None,
+        ),
+        setup=setup_scan.setup if setup_scan is not None else None,
+        teardown=teardown_scan.teardown if teardown_scan is not None else None,
         command=command,
         children=tuple(children),
     )
+
+
+def _single_definition(
+    scans: tuple[ModuleScan, ...],
+    function_name: str,
+    route: tuple[str, ...],
+) -> ModuleScan | None:
+    defining = [scan for scan in scans if getattr(scan, function_name) is not None]
+    if len(defining) > 1:
+        raise DefinitionError(
+            f"同じグループの{function_name}関数が複数のパッケージで定義されています",
+            route=route,
+            source=getattr(defining[1], function_name),
+        )
+    return defining[0] if defining else None

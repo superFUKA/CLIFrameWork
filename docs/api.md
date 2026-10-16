@@ -10,6 +10,9 @@ create_cli(
     *,
     name: str | None = None,
     bindings: Mapping[str, str] | None = None,
+    extensions: Mapping[str, ModuleType]
+        | Iterable[tuple[str, ModuleType]]
+        | None = None,
     debug: bool = False,
 ) -> click.Command
 ```
@@ -21,6 +24,7 @@ import済みのコマンドパッケージを走査し、Click互換のルート
 - `command_package`: `__path__`を持つimport済みPythonパッケージ。
 - `name`: 表示するルートCLI名。省略時はパッケージ名の最後の区間。
 - `bindings`: `_name_`形式の経路区間を具体名へ置換する文字列mapping。構築時にコピーされます。
+- `extensions`: 別の場所にあるcommandパッケージを本体のグループ配下へ重ねる`(拡張先パス, パッケージ)`の組の列、またはmapping。拡張先パスは`/`区切りのディレクトリ区間で、空文字はルートです。規則は[製品仕様](product-spec.md#拡張パッケージの振る舞い)を参照してください。
 - `debug`: `True`の場合、実行時例外のtracebackをstderrへ表示します。
 
 ```python

@@ -8,6 +8,9 @@ def create_cli(
     *,
     name: str | None = None,
     bindings: Mapping[str, str] | None = None,
+    extensions: Mapping[str, ModuleType]
+        | Iterable[tuple[str, ModuleType]]
+        | None = None,
     debug: bool = False,
 ) -> click.Command: ...
 
@@ -44,6 +47,14 @@ CLI作成時にbindingsをコピーし、読み取り専用のmappingにしま�
 - 構文エラーとソース読み取り失敗には対象パスを含めます。
 
 Clickオブジェクトを構築する前に、結果をルート記述子として表現します。bindingsの解決後、ルートコマンドを公開する前に衝突を検証します。
+
+## 拡張パッケージの統合
+
+`extensions`の各組について、拡張先パスを`/`で区切った区間列（空文字は空の列）と、import済みパッケージを受け取ります。区間の空文字、先頭の`-`、空白、NULを拒否します。拡張パッケージは本体と同じく`__path__`から静的に探索し、本体・他の拡張パッケージと同名または包含関係にあれば定義エラーにします。
+
+ルート構築では、拡張パッケージ内モジュールの相対区間の前に拡張先の区間を付け、本体と同じルートツリーへ追加します。各ルートの`SourceDescriptor`は拡張パッケージ側のモジュール名を保持するため、遅延importと相対importは拡張パッケージのまま動作します。
+
+1つのグループに複数パッケージの`__init__.py`が対応する場合、`command`、`setup`、`teardown`はそれぞれ最大1つとし、2つ目を定義エラーにします。グループの説明とソースは本体、拡張の指定順で最初のものを使います。名前衝突の検証とbinding解決は統合後のツリーに対して従来どおり行います。
 
 ## Binding解決
 
