@@ -155,6 +155,43 @@ class ParameterInfo:
 
 `RouteInfo`と`ParameterInfo`はClickの型を含みません。返却後にClickオブジェクトへ加えた変更（非表示やOption名の書き換え）は反映しません。
 
+## 機械向けの出力
+
+`cli_framework/machine.py`に置く任意の層です。本体のモジュールは`machine`へ依存しません。`machine`は公開API（`describe_cli`・例外）とClickだけに依存します。
+
+```python
+def respond(action: Callable[[], object], *, json: bool = False,
+            render: Callable[[Any], str | None] | None = None) -> int: ...
+def progress(text: str, *, ratio: float | None = None) -> None: ...
+def warning(text: str) -> None: ...
+def notice(text: str) -> None: ...
+def catalog(cli: click.Command) -> dict[str, Any]: ...
+def main(cli: click.Command, argv: Sequence[str] | None = None) -> None: ...
+
+class CommandError(Exception):
+    code: str
+    message: str
+    hint: str | None
+```
+
+`respond`は、実行中の出力形式と知らせの一覧を専用の`ContextVar`へ保存し、`finally`節で元へ戻します。利用者の`Context.state`は使いません。結果のJSONの`command`は、Clickの実行Contextからルート名を除いた経路です。CLI実行の外で呼んだ場合は空文字です。JSONへ変換できない結果は、変換時の例外をそのまま送出します。
+
+`progress`・`warning`・`notice`は、`respond`の実行中で`json`が真ならJSONの1行を、それ以外は文字を標準エラーへ出力します。
+
+`catalog`は`describe_cli`の記述を次の形へ変換します。直接実行できるルートでは`parameters()`を呼ぶため、全commandモジュールを読み込みます。
+
+```json
+{"name": "add", "path": "files add", "summary": "…", "help": "…", "runnable": true, "effect": "change",
+ "arguments": [{"name": "NAME", "param": "name", "help": "…", "required": true, "multiple": false, "type": "str"}],
+ "options": [{"names": ["--count"], "param": "count", "help": "…", "flag": false, "required": false,
+              "multiple": false, "type": "int", "negative": null, "default": 1}],
+ "commands": []}
+```
+
+`effect`は、commandのソースファイル（グループの既定commandは`__init__.py`）をASTで解析し、トップレベルの`EFFECT = "…"`を読みます。値を得るためにモジュールを実行しません。定数がない、または`read`・`change`・`confirm`以外の場合は、経路とソース位置付きの`DefinitionError`にします。
+
+`main`は、`--`より前に`--help`と`--json`の両方があるとき、`-`で始まらない引数を先頭から順に子の名前と照合して対象のルートを決め、`{"ok": true, "command": "help", "result": <ルート>, …}`を出力して終了コード0で終了します。一致しなくなった時点で照合を止めます（残りはcommandの引数）。定義エラーは`{"ok": false, "error": {"code": "definition_error", …}}`と終了コード1です。それ以外は`cli.main(args=…)`へ委譲します。
+
 ## エラーモデル
 
 フレームワーク例外の基底型と、定義エラーの派生型を公開します。静的探索・binding・ルート衝突の定義エラーは`create_cli()`から送出します。importとシグネチャの検証は詳細取得・引数解析時、ライフサイクル定義の検証は実行時に行います。判明している場合は論理ルートとソース位置を含めます。

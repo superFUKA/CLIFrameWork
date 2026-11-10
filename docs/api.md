@@ -95,6 +95,30 @@ current_context() -> Context
 
 Contextは実行ごとに分離され、実行終了後には現在値が復元されます。
 
+## 機械向けの出力（`cli_framework.machine`）
+
+任意の層です。`cli_framework`直下ではなく、`cli_framework.machine`からimportします。
+
+- `respond(action, *, json=False, render=None) -> int`: actionを実行して結果を出力し、終了コードを返します。
+- `CommandError(code, message, *, hint=None)`: 利用者へ報告する失敗。actionから送出します。
+- `progress(text, *, ratio=None)`、`warning(text)`、`notice(text)`: 途中の様子を標準エラーへ出力します。
+- `catalog(cli) -> dict`: コマンド一覧。`EFFECT`のない直接実行可能なcommandは`DefinitionError`です。
+- `main(cli, argv=None) -> None`: CLIを実行します。`--help --json`でコマンド一覧のJSONを出力します。
+- `EFFECTS`: 重さとして使える値のtuple（`"read"`、`"change"`、`"confirm"`）。
+
+```python
+from cli_framework import create_cli
+from cli_framework.machine import main
+
+from my_app import commands
+
+cli = create_cli(commands, name="my-tool")
+
+
+def run() -> None:   # entry pointに登録する
+    main(cli)
+```
+
 ## 例外
 
 ### `CliFrameworkError`

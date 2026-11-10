@@ -25,6 +25,7 @@ commandパッケージ
 - **Clickアダプター**：ルート記述子をネストした遅延読み込み対応のClickコマンドとグループとして公開します。
 - **日本語表示（Clickアダプター内部）**：`click_localization.py`でヘルプと用法エラーを表示します。解析はClickへ委譲し、他のClickアプリケーションの表示設定を変更しません。
 - **記述の公開**：解決済みのルート記述子と引数記述子を、Clickの型を含まない読み取り専用データとして公開します。
+- **機械向けの出力（任意）**：`machine.py`で、結果のJSON、途中の様子、重さ、コマンド一覧を提供します。使うcommandだけがimportします。
 - **ランタイム**：現在のContextを設定し、setup、command、teardownを実行して、結果や失敗を終了動作へ変換します。
 - **Context**：読み取り専用bindings、任意利用の可変state、teardown中の例外を公開します。
 
@@ -32,7 +33,7 @@ commandパッケージ
 
 探索とルートモデルはClickへ依存しません。引数変換では、Clickアダプターが利用する前にフレームワーク中立の引数記述を生成できます。ランタイムはルートモデルとContextへ依存でき、外側のアダプターだけがClickへ直接依存します。
 
-利用者のcommandパッケージは公開`cli_framework` APIだけに依存し、内部モジュールをimportしてはいけません。
+利用者のcommandパッケージは公開`cli_framework` API（任意で`cli_framework.machine`）だけに依存し、内部モジュールをimportしてはいけません。本体のモジュールは`machine`へ依存しません。
 
 ## 探索境界
 

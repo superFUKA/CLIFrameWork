@@ -143,6 +143,41 @@ generatorおよびasync generator形式のライフサイクル関数は未対�
 - 未対応のシグネチャやOption名の衝突は、`parameters()`の呼び出しで定義エラーになります（詳細ヘルプの取得時と同じ）。
 - `create_cli`が返したCLI以外を渡すとフレームワークエラーになります。返却後にClickオブジェクトへ加えた変更は反映しません。
 
+## 機械向けの出力（任意）
+
+`cli_framework.machine`は、スクリプト・AI・GUIなどの機械からCLIを使うための任意の層です。使わないCLIの動作は変わりません。`cli_framework`直下からは公開せず、使うcommandが`cli_framework.machine`からimportします。
+
+```python
+from typing import Annotated
+
+from cli_framework.machine import CommandError, respond
+
+EFFECT = "change"
+
+
+def command(
+    name: Annotated[str, "ファイル名"],
+    json: Annotated[bool, "結果をJSONで出力する"] = False,
+) -> int:
+    """ファイルを作ります。"""
+
+    def action():
+        if not name:
+            raise CommandError("invalid_name", "名前を入れてください")
+        return {"name": name}
+
+    return respond(action, json=json, render=lambda result: f"{result['name']} を作りました")
+```
+
+- `json`は通常の引数として各commandが宣言します。フレームワークがOptionを自動で追加することはありません。
+- `respond`はactionを実行し、`json`が真なら標準出力へJSONを1つだけ出力します：`{"ok", "command", "result", "notices", "error"}`。偽なら`render`が返した文字列を出力します。成功で0、`CommandError`で1を返します。commandは、その値をそのまま返します。
+- `CommandError(code, message, hint=None)`は利用者へ報告する失敗です。JSONでは`error`の`{"code", "message", "hint"}`、通常の表示では標準エラーの「エラー: …」になります。それ以外の例外は、通常のアプリケーションエラーとして扱います。
+- `progress`・`warning`・`notice`は途中の様子を標準エラーへ出力します。`json`が真の実行では、1行1件のJSON（`{"kind", "text"}`。`progress`は任意で`ratio`）です。`notice`の文は結果の`notices`にも入ります。
+- commandの重さは、モジュールのトップレベルの定数`EFFECT`で宣言します。`"read"`（何も変えない）・`"change"`（変える）・`"confirm"`（変える前に人の確認が要る）のいずれかです。
+- `catalog(cli)`は、コマンド一覧（名前、経路、説明、重さ、引数とOption）をJSONへ変換できるdictで返します。直接実行できるcommandに`EFFECT`がない、または値が不正な場合は定義エラーです。
+- `main(cli)`はCLIを実行します。引数に`--help`と`--json`の両方があれば、指定した経路のコマンド一覧をJSONで出力します（`tool --help --json`、`tool files add --help --json`）。`--`より後ろは値として扱います。
+- `EFFECT`の検査は一覧の取得時だけ行います。一覧を使わない限り、`EFFECT`のないcommandの実行は変わりません。
+
 ## 初版の対象外
 
 初版では、独自パーサー、プロジェクト生成、設定管理、ロギング、DIコンテナ、非同期command、Rich固有表示、独自変換、`list[T]`などのコレクション型注釈、可変長キーワード引数`**kwargs`、繰り返しOption、追加の引数型を提供しません。
