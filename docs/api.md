@@ -39,6 +39,45 @@ cli = create_cli(
 )
 ```
 
+## `describe_cli`
+
+```python
+describe_cli(cli: click.Command) -> RouteInfo
+```
+
+`create_cli`が返したCLIの記述を返します。commandモジュールはimportしません。それ以外のClickコマンドを渡すと`CliFrameworkError`を送出します。
+
+```python
+root = describe_cli(cli)
+for route in root.children:
+    print(" ".join(route.path), route.help)
+    if route.runnable:
+        for parameter in route.parameters():   # ここでcommandモジュールを読み込む
+            print(" ", parameter.option or parameter.name, parameter.type)
+```
+
+## `RouteInfo`
+
+読み取り専用のグループまたは末端コマンドです。
+
+- `name: str`、`path: tuple[str, ...]`: 名前と、ルートCLI名を除く経路。
+- `help: str | None`: グループまたはcommandの説明。
+- `command_help: str | None`: 直接実行できる場合のcommandの説明。
+- `module: str | None`、`file: Path | None`: ソースモジュール名とファイル。
+- `runnable: bool`: 直接実行できるか。
+- `children: tuple[RouteInfo, ...]`: 名前順の子。
+- `parameters() -> tuple[ParameterInfo, ...]`: 宣言順の引数。commandモジュールを読み込み、定義の不備は`DefinitionError`を送出します。直接実行できないグループでは空です。
+
+## `ParameterInfo`
+
+読み取り専用の引数です。
+
+- `name: str`: Pythonの引数名。
+- `type: str`: `"str"`、`"int"`、`"float"`、`"bool"`のいずれか。
+- `kind: str`: 位置引数は`"argument"`、Optionは`"option"`。
+- `required: bool`、`variadic: bool`、`default`、`help: str | None`。
+- `option: str | None`: Option名（`--jobs`）。`negative: str | None`: bool Optionの否定形（`--no-clean`）。
+
 ## `current_context`
 
 ```python

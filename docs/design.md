@@ -15,6 +15,8 @@ def create_cli(
 ) -> click.Command: ...
 
 def current_context() -> Context: ...
+
+def describe_cli(cli: click.Command) -> RouteInfo: ...
 ```
 
 `Context`は次を公開します。
@@ -115,6 +117,43 @@ Clickがコマンドの詳細定義を必要としたとき、またはコマン
 ライフサイクル関数はフレームワーク定義の引数を取らず、戻り値を無視します。teardownも失敗した場合は、元のsetupまたはcommand例外を優先します。それ以前の失敗がなければ最初のteardown例外を主例外とし、後続のteardown例外をnoteまたは例外チェーンへ追加します。
 
 ライフサイクル関数の呼び出し直前にgenerator / async generatorを拒否します。全スコープの事前importは行わず、既存の遅延読み込みと外側スコープの後処理を維持します。
+
+## CLIの記述
+
+```python
+@dataclass(frozen=True, slots=True)
+class RouteInfo:
+    name: str
+    path: tuple[str, ...]          # ルートCLI名を除く経路
+    help: str | None               # グループまたはcommandの説明
+    command_help: str | None       # 直接実行できる場合のcommandの説明
+    module: str | None
+    file: Path | None
+    runnable: bool
+    children: tuple[RouteInfo, ...]
+
+    def parameters(self) -> tuple[ParameterInfo, ...]: ...
+
+@dataclass(frozen=True, slots=True)
+class ParameterInfo:
+    name: str                      # Pythonの引数名
+    type: str                      # "str" | "int" | "float" | "bool"
+    kind: str                      # "argument" | "option"
+    required: bool
+    variadic: bool
+    default: str | int | float | bool | None
+    help: str | None
+    option: str | None             # "--name"
+    negative: str | None           # "--no-name"（bool Optionだけ）
+```
+
+`describe_cli`は、ルートのClickグループが保持する解決済みのルート記述子を`RouteInfo`へ変換します。`create_cli`が構築したグループでなければ`CliFrameworkError`にします。変換は記述子だけを読み、commandモジュールをimportしません。子は名前順（Clickの一覧と同じ）です。
+
+グループの`module`と`file`は`__init__.py`を指し、`__init__.py`を持たないグループでは`None`です。`command_help`は末端コマンドでは`help`と同じ、既定commandのないグループでは`None`です。
+
+`parameters()`は、Clickコマンドの構築時と同じ手順（遅延読み込み、引数の検査、Option名の衝突検証）を実行し、中立な引数記述子を`ParameterInfo`へ変換します。Option名はClickアダプターと同じ規則（underscoreをhyphenへ、boolは否定形を追加）で求めます。直接実行できないグループでは空tupleを返します。
+
+`RouteInfo`と`ParameterInfo`はClickの型を含みません。返却後にClickオブジェクトへ加えた変更（非表示やOption名の書き換え）は反映しません。
 
 ## エラーモデル
 

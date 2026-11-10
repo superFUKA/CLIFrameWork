@@ -10,9 +10,10 @@ from typing import Union
 import click
 
 from .bindings import resolve_bindings
-from .click_group import build_click_group
+from .click_group import RouteGroup, build_click_group
+from .description import RouteInfo, describe_route
 from .discovery import scan_package
-from .errors import DefinitionError
+from .errors import CliFrameworkError, DefinitionError
 from .model import GroupDescriptor
 from .routes import RouteSource, build_route_tree
 
@@ -43,6 +44,16 @@ def create_cli(
         root = _rename_root(root, name)
     root = resolve_bindings(root, active_bindings)
     return build_click_group(root, debug=debug, bindings=active_bindings)
+
+
+def describe_cli(cli: click.Command) -> RouteInfo:
+    """create_cliが返したCLIの記述を、読み取り専用データとして返す。"""
+
+    if not isinstance(cli, RouteGroup):
+        raise CliFrameworkError(
+            "describe_cliにはcreate_cliが返したCLIが必要です"
+        )
+    return describe_route(cli.descriptor)
 
 
 def _extension_sources(
