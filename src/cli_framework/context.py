@@ -13,11 +13,12 @@ from .errors import CliFrameworkError
 class Context:
     """現在のCLI実行に属するbindings、state、例外を保持する。"""
 
-    __slots__ = ("_bindings", "_state", "_exception")
+    __slots__ = ("_bindings", "_state", "_exception", "_json")
 
-    def __init__(self, bindings: Mapping[str, str]) -> None:
+    def __init__(self, bindings: Mapping[str, str], json: bool = False) -> None:
         self._bindings = MappingProxyType(dict(bindings))
         self._state: dict[str, object] = {}
+        self._json = json
         self._exception: BaseException | None = None
 
     @property
@@ -31,6 +32,12 @@ class Context:
         """この実行中に利用者が共有できる可変stateを返す。"""
 
         return self._state
+
+    @property
+    def json(self) -> bool:
+        """構造化出力のCLIで、この実行に`--json`が指定されたかを返す。"""
+
+        return self._json
 
     @property
     def exception(self) -> BaseException | None:
@@ -68,10 +75,13 @@ def current_context() -> Context:
 
 
 @contextmanager
-def _activate_context(bindings: Mapping[str, str]) -> Iterator[Context]:
+def _activate_context(
+    bindings: Mapping[str, str],
+    json: bool = False,
+) -> Iterator[Context]:
     """新しいContextを有効化し、終了時に以前の値を復元する。"""
 
-    context = Context(bindings)
+    context = Context(bindings, json)
     token = _CURRENT_CONTEXT.set(context)
     try:
         yield context

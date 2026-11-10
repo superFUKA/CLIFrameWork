@@ -37,3 +37,13 @@ class DefinitionError(CliFrameworkError):
         if not details:
             return self.message
         return f"{self.message} [{' ; '.join(details)}]"
+
+
+class CommandError(Exception):
+    """commandが利用者へ報告する失敗。codeは機械向け、messageは人向け。"""
+
+    def __init__(self, code: str, message: str, *, hint: str | None = None) -> None:
+        super().__init__(message)
+        self.code = code
+        self.message = message
+        self.hint = hint

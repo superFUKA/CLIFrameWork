@@ -3,13 +3,13 @@
 from __future__ import annotations
 
 import inspect
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from types import SimpleNamespace
 from typing import Annotated, get_args, get_origin, get_type_hints
 
 from .errors import DefinitionError
-from .model import SourceDescriptor
+from .model import CommandDescriptor, SourceDescriptor
 
 
 SupportedValue = str | int | float | bool
@@ -155,3 +155,31 @@ def _invalid(
         route=route,
         source=source,
     )
+
+
+def validate_option_names(
+    parameters: Sequence[ParameterDescriptor],
+    descriptor: CommandDescriptor,
+    *,
+    structured: bool = False,
+) -> None:
+    """生成するOption名が、予約名や他の引数と衝突しないことを検証する。"""
+
+    owners: dict[str, str] = {"--help": "標準ヘルプ"}
+    if structured:
+        owners["--json"] = "構造化出力"
+    for parameter in parameters:
+        if parameter.is_argument:
+            continue
+        name = parameter.name.replace("_", "-")
+        options = [f"--{name}"]
+        if parameter.parameter_type is bool:
+            options.append(f"--no-{name}")
+        for option in options:
+            if option in owners:
+                raise DefinitionError(
+                    f"引数 {parameter.name!r}: Option {option!r} が"
+                    f" {owners[option]!r} と衝突しています",
+                    source=descriptor.source, route=(descriptor.name,),
+                )
+            owners[option] = parameter.name

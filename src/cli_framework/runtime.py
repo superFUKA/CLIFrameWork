@@ -16,10 +16,16 @@ def run_with_lifecycle(
     values: dict[str, object],
     scopes: Sequence[GroupDescriptor],
     bindings: Mapping[str, str],
+    *,
+    allow_data: bool = False,
+    json: bool = False,
 ) -> object:
-    """setup、command、teardownをContext内で規定順に実行する。"""
+    """setup、command、teardownをContext内で規定順に実行する。
 
-    with _activate_context(bindings) as context:
+    allow_dataが真なら、commandの戻り値をNoneとintに限定しない（構造化出力）。
+    """
+
+    with _activate_context(bindings, json) as context:
         completed: list[GroupDescriptor] = []
         result: object = None
         primary: BaseException | None = None
@@ -30,7 +36,7 @@ def run_with_lifecycle(
                     setup()
                 completed.append(scope)
             result = command(**values)
-            if result is not None and type(result) is not int:
+            if not allow_data and result is not None and type(result) is not int:
                 raise TypeError(
                     "commandの戻り値はNoneまたはintである必要があります"
                     f"（実際: {type(result).__name__}）"

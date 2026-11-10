@@ -118,6 +118,8 @@ generatorおよびasync generator形式のライフサイクル関数は未対�
 
 ## 戻り値とエラーの振る舞い
 
+構造化出力を有効にしたCLIの戻り値とエラーは「構造化出力」を参照してください。ここでは既定の動作を示します。
+
 - `None`を返すと終了コード0で成功します。
 - 整数を返すと、その整数をプロセス終了コードとして使用します。
 - `None`と厳密な`int`以外の戻り値（boolを含む）はTypeErrorです。teardownより前に検証し、`current_context().exception`から参照できます。非ゼロの整数を返すこと自体は例外ではありません。
@@ -142,6 +144,48 @@ generatorおよびasync generator形式のライフサイクル関数は未対�
 - 各ルートの`parameters()`を呼ぶと、そのcommandモジュールを読み込み、引数を宣言順に返します。引数名、型名（`str`・`int`・`float`・`bool`）、位置引数かOptionか、必須か、可変長か、既定値、説明、Option名と否定形を取得できます。
 - 未対応のシグネチャやOption名の衝突は、`parameters()`の呼び出しで定義エラーになります（詳細ヘルプの取得時と同じ）。
 - `create_cli`が返したCLI以外を渡すとフレームワークエラーになります。返却後にClickオブジェクトへ加えた変更は反映しません。
+
+## 構造化出力（任意）
+
+`create_cli(..., structured=True)`で、機械（スクリプト・AI・GUI）からも使えるCLIになります。指定しないCLIの動作は変わりません。
+
+```python
+# commands/files/add.py
+"""ファイルを作ります。"""
+from typing import Annotated
+
+EFFECT = "change"
+
+
+def command(name: Annotated[str, "ファイル名"]) -> dict:
+    return {"name": name}
+
+
+def render(result) -> str:
+    return f"{result['name']} を作りました"
+```
+
+```console
+tool files add a.txt            # a.txt を作りました
+tool files add a.txt --json     # {"ok": true, "command": "files add", "result": {"name": "a.txt"}, "error": null}
+tool files add --help --json    # このcommandの記述（引数・重さ）
+tool --help --json              # コマンド一覧
+```
+
+- commandは結果のデータを返します。`None`は結果なし、厳密な`int`は従来どおり終了コード、それ以外（`bool`を含む）は結果です。
+- すべての直接実行できるcommandに、Option`--json`を追加します。否定形（`--no-json`）は作りません。
+- `--json`を指定した実行では、標準出力の最後の行にJSONを1つ出力します：`{"ok", "command", "result", "error"}`。`command`はルートCLI名を除く経路です。失敗時の`error`は`{"code", "message", "hint"}`です。
+  - `CommandError(code, message, hint=None)`：commandが報告する失敗。終了コード1。
+  - 用法エラー（引数の不足、未知のコマンドやOption）：`code`は`usage_error`、終了コード2。
+  - 定義エラー：`definition_error`、終了コード1。その他の例外：`unexpected`、終了コード1。
+  - 非ゼロの`int`を返した場合：`exit_code`、終了コードはその値。
+  - JSONへ変換できない結果は`unexpected`です。
+- `--json`を指定しない実行では、同じモジュールのトップレベルに`render(result)`があれば、その戻り値（`str`または`None`）を標準出力へ出力します。`render`はcommandの直後、teardownの前に実行します。`render`がなければ結果を表示しません。`CommandError`は標準エラーへ「エラー: …」（`hint`があれば次の行）を出力します。
+- `--json`はOption名として予約します。Option`--json`または`--no-json`になる引数は定義エラーです。`json`という名前の位置引数は利用できます。
+- commandは`current_context().json`で、`--json`が指定されたかを確認できます。`--json`の実行では、command自身は標準出力へ書き込まないでください。
+- 直接実行できるすべてのcommandは、モジュールのトップレベルに重さ`EFFECT`を文字列リテラルで宣言します：`"read"`（何も変えない）・`"change"`（変える）・`"confirm"`（変える前に人の確認が要る）。グループの既定commandは`__init__.py`に書きます。
+- `EFFECT`がない、文字列リテラルでない、値が不正、`render`が非同期、のいずれかは、`create_cli`が定義エラーにします（commandをimportせずに検証します）。`render`が結果を1つの位置引数で受け取れない場合は、そのcommandの読み込み時に定義エラーになります。
+- `--help`と`--json`を同時に指定すると、その経路の記述をJSONで出力します：`{"ok": true, "command": "help <経路>", "result": <記述>, "error": null}`。記述は`name`・`path`・`help`・`command_help`・`runnable`・`effect`・`parameters`・`commands`（子）で、`parameters`の各要素は`describe_cli`の`ParameterInfo`と同じ項目です。`--json`自身は`parameters`に含めません。グループでは、`--help`と`--json`をコマンド名より前に指定します。
 
 ## 初版の対象外
 

@@ -12,6 +12,7 @@ def create_cli(
         | Iterable[tuple[str, ModuleType]]
         | None = None,
     debug: bool = False,
+    structured: bool = False,
 ) -> click.Command: ...
 
 def current_context() -> Context: ...
@@ -31,6 +32,9 @@ class Context:
 
     @property
     def exception(self) -> BaseException | None: ...
+
+    @property
+    def json(self) -> bool: ...
 
     def get_binding(self, key: str) -> str: ...
 ```
@@ -130,6 +134,7 @@ class RouteInfo:
     module: str | None
     file: Path | None
     runnable: bool
+    effect: str | None             # トップレベルの EFFECT（文字列リテラルのとき）
     children: tuple[RouteInfo, ...]
 
     def parameters(self) -> tuple[ParameterInfo, ...]: ...
@@ -154,6 +159,24 @@ class ParameterInfo:
 `parameters()`は、Clickコマンドの構築時と同じ手順（遅延読み込み、引数の検査、Option名の衝突検証）を実行し、中立な引数記述子を`ParameterInfo`へ変換します。Option名はClickアダプターと同じ規則（underscoreをhyphenへ、boolは否定形を追加）で求めます。直接実行できないグループでは空tupleを返します。
 
 `RouteInfo`と`ParameterInfo`はClickの型を含みません。返却後にClickオブジェクトへ加えた変更（非表示やOption名の書き換え）は反映しません。
+
+## 構造化出力
+
+`structured=True`の処理は、既定の経路と分けて実装します。指定しない場合、追加の検証・Option・出力は行いません。
+
+**探索**：`discovery`は、各モジュールのトップレベルの`EFFECT`への代入（値が文字列リテラルならその値、それ以外は位置だけ）と、`render`関数（位置と、非同期かどうか）を`ModuleScan`へ記録します。この段階では拒否しません。`routes`は、それらを`CommandDescriptor`の`effect`・`effect_source`・`render`・`render_async`へ写します。
+
+**検証**：`create_cli`は、binding解決後のツリーに対して`structured.validate_structured`を実行し、直接実行できる全commandの`EFFECT`と`render`を検証します。commandモジュールはimportしません。
+
+**Option**：`build_click_command`は、引数記述子に`--json`のフラグを追加します。内部の引数名は、利用者の引数名と重複しない名前（`json`、重複すれば`_json`…）にします。Option名の衝突検証（`parameters.validate_option_names`）は、`--help`に加えて`--json`を予約済みとして扱います。
+
+**実行**：`_invoke_structured`は、`run_with_lifecycle(..., allow_data=True, json=…)`でcommandを実行します。`allow_data`は戻り値の型検証を省き、`json`は`Context.json`になります。`render`は、commandを包む関数の中で呼び出し、teardownより前に出力します。`--json`の実行では、ライフサイクルの完了後に`{"ok", "command", "result", "error"}`を1行で出力します。`CommandError`・`DefinitionError`・その他の例外・非ゼロの`int`・変換できない結果は、製品仕様の`code`で失敗のJSONにします。`debug=True`では、その他の例外のtracebackを標準エラーへ出力します。
+
+**用法エラー**：ルートの`RouteGroup.main`は、`--`より前の引数に`--json`があるかを記録します。Clickの用法例外を表示する処理（`JapaneseCommandMixin.show_error`）をルートで差し替え、記録があれば日本語の本文を`usage_error`のJSONとして標準出力へ出力します。終了コードはClickの値（2）のままです。ルート実行で捕捉する`DefinitionError`も同様に`definition_error`のJSONにします。
+
+**記述の出力**：末端commandは`parse_args`の先頭で、Clickの解析器を使って`--help`と`--json`の両方が指定されたかを判定します（Optionの値として渡された同じ文字を除くため）。グループは、コマンド名より前に並ぶOptionだけを見ます。該当すれば、`describe_route`の記述を`description.catalog_node`でdictへ変換し、`{"ok": true, "command": "help <経路>", …}`を出力して終了コード0で終了します。
+
+Option名の衝突検証は、Clickへ依存しない`parameters.validate_option_names`へ移しました。Clickアダプターと`RouteInfo.parameters()`が同じ関数を使います。
 
 ## エラーモデル
 

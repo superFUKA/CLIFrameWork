@@ -75,6 +75,14 @@ def _usage_message(error: click.UsageError) -> str:
     return error.format_message()
 
 
+def error_message(error: click.ClickException) -> str:
+    """ClickExceptionの、日本語の本文だけを返す。"""
+
+    if isinstance(error, click.UsageError):
+        return _usage_message(error)
+    return error.format_message()
+
+
 def _show_error(error: click.ClickException) -> None:
     if isinstance(error, click.UsageError):
         ctx = error.ctx
@@ -103,6 +111,9 @@ class JapaneseCommandMixin:
                 error.ctx = ctx
             raise
 
+    def show_error(self, error: click.ClickException) -> None:
+        _show_error(error)
+
     def get_help_option(self, ctx: click.Context) -> click.Option | None:
         option = super().get_help_option(ctx)
         if option is not None:
@@ -125,7 +136,7 @@ class JapaneseCommandMixin:
         except click.ClickException as error:
             if not standalone_mode:
                 raise
-            _show_error(error)
+            self.show_error(error)
             raise SystemExit(error.exit_code) from error
         except click.Abort:
             if not standalone_mode:

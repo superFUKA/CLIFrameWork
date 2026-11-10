@@ -2,11 +2,12 @@
 
 from .context import Context, current_context
 from .description import ParameterInfo, RouteInfo
-from .errors import CliFrameworkError, DefinitionError
+from .errors import CliFrameworkError, CommandError, DefinitionError
 from .factory import create_cli, describe_cli
 
 __all__ = [
     "CliFrameworkError",
+    "CommandError",
     "Context",
     "DefinitionError",
     "ParameterInfo",

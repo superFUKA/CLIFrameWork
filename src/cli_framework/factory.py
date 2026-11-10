@@ -16,6 +16,7 @@ from .discovery import scan_package
 from .errors import CliFrameworkError, DefinitionError
 from .model import GroupDescriptor
 from .routes import RouteSource, build_route_tree
+from .structured import validate_structured
 
 
 Extensions = Union[Mapping[str, ModuleType], Iterable[tuple[str, ModuleType]]]
@@ -27,6 +28,7 @@ def create_cli(
     bindings: Mapping[str, str] | None = None,
     extensions: Extensions | None = None,
     debug: bool = False,
+    structured: bool = False,
 ) -> click.Command:
     """import済みcommandパッケージからClick互換CLIを構築する。"""
 
@@ -43,7 +45,11 @@ def create_cli(
         _validate_cli_name(name)
         root = _rename_root(root, name)
     root = resolve_bindings(root, active_bindings)
-    return build_click_group(root, debug=debug, bindings=active_bindings)
+    if structured:
+        validate_structured(root)
+    return build_click_group(
+        root, debug=debug, bindings=active_bindings, structured=structured
+    )
 
 
 def describe_cli(cli: click.Command) -> RouteInfo:
@@ -53,7 +59,7 @@ def describe_cli(cli: click.Command) -> RouteInfo:
         raise CliFrameworkError(
             "describe_cliにはcreate_cliが返したCLIが必要です"
         )
-    return describe_route(cli.descriptor)
+    return describe_route(cli.descriptor, structured=cli.structured)
 
 
 def _extension_sources(

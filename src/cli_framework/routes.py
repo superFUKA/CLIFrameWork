@@ -78,6 +78,10 @@ def _add_source(root: _GroupNode, index: int, source: RouteSource) -> None:
                 name=name,
                 source=scan.command,
                 help_text=scan.command_docstring or scan.docstring,
+                effect=scan.effect,
+                effect_source=scan.effect_source,
+                render=scan.render,
+                render_async=scan.render_async,
             )
 
 
@@ -143,6 +147,10 @@ def _freeze_group(
             name=node.name,
             source=command_scan.command,
             help_text=command_scan.command_docstring or command_scan.docstring,
+            effect=command_scan.effect,
+            effect_source=command_scan.effect_source,
+            render=command_scan.render,
+            render_async=command_scan.render_async,
         )
     setup_scan = _single_definition(scans, "setup", route)
     teardown_scan = _single_definition(scans, "teardown", route)

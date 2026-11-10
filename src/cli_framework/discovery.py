@@ -27,6 +27,10 @@ class ModuleScan:
     setup: SourceDescriptor | None = None
     teardown: SourceDescriptor | None = None
     command_docstring: str | None = None
+    effect: str | None = None
+    effect_source: SourceDescriptor | None = None
+    render: SourceDescriptor | None = None
+    render_async: bool = False
 
 
 def scan_package(command_package: ModuleType) -> tuple[ModuleScan, ...]:
@@ -126,7 +130,41 @@ def _scan_file(package_name: str, root: Path, path: Path) -> ModuleScan:
         setup=definitions.get("setup"),
         teardown=definitions.get("teardown"),
         command_docstring=command_docstring,
+        **_scan_structured(tree, module_name, path),
     )
+
+
+def _scan_structured(tree: ast.Module, module_name: str, path: Path) -> dict[str, object]:
+    """構造化出力で使うトップレベル定義（EFFECTとrender）を記録する。
+
+    検証は構造化出力を有効にしたCLIだけで行うため、ここでは不正な定義も拒否しない。
+    """
+
+    found: dict[str, object] = {}
+    for node in tree.body:
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) and node.name == "render":
+            found["render"] = SourceDescriptor(
+                module_name, path, line=node.lineno, column=node.col_offset + 1
+            )
+            found["render_async"] = isinstance(node, ast.AsyncFunctionDef)
+            continue
+        if isinstance(node, ast.Assign):
+            targets, value = node.targets, node.value
+        elif isinstance(node, ast.AnnAssign) and node.value is not None:
+            targets, value = [node.target], node.value
+        else:
+            continue
+        if not any(isinstance(target, ast.Name) and target.id == "EFFECT" for target in targets):
+            continue
+        found["effect_source"] = SourceDescriptor(
+            module_name, path, line=node.lineno, column=node.col_offset + 1
+        )
+        found["effect"] = (
+            value.value
+            if isinstance(value, ast.Constant) and isinstance(value.value, str)
+            else None
+        )
+    return found
 
 
 def _module_identity(package_name: str, root: Path, path: Path) -> tuple[str, bool]:

@@ -5,10 +5,14 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from .click_command import _validate_option_names
 from .loading import load_command
 from .model import CommandDescriptor, GroupDescriptor, RouteDescriptor
-from .parameters import ParameterDescriptor, SupportedValue, inspect_parameters
+from .parameters import (
+    ParameterDescriptor,
+    SupportedValue,
+    inspect_parameters,
+    validate_option_names,
+)
 
 _TYPE_NAMES = {str: "str", int: "int", float: "float", bool: "bool"}
 
@@ -39,10 +43,12 @@ class RouteInfo:
     module: str | None
     file: Path | None
     runnable: bool
+    effect: str | None = None
     children: tuple[RouteInfo, ...] = ()
     _command: CommandDescriptor | None = field(
         default=None, repr=False, compare=False
     )
+    _structured: bool = field(default=False, repr=False, compare=False)
 
     def parameters(self) -> tuple[ParameterInfo, ...]:
         """command関数の引数を宣言順に返す。commandモジュールはここで読み込む。"""
@@ -53,13 +59,17 @@ class RouteInfo:
         parameters = inspect_parameters(
             command, self._command.source, route=(self._command.name,)
         )
-        _validate_option_names(parameters, self._command)
+        validate_option_names(
+            parameters, self._command, structured=self._structured
+        )
         return tuple(_parameter_info(parameter) for parameter in parameters)
 
 
 def describe_route(
     route: RouteDescriptor,
     path: tuple[str, ...] = (),
+    *,
+    structured: bool = False,
 ) -> RouteInfo:
     """ルート記述子を公開用の記述へ変換する。commandモジュールは読み込まない。"""
 
@@ -69,7 +79,7 @@ def describe_route(
             command.source if command is not None else None
         )
         children = tuple(
-            describe_route(child, (*path, child.name))
+            describe_route(child, (*path, child.name), structured=structured)
             for child in sorted(route.children, key=lambda child: child.name)
         )
         return RouteInfo(
@@ -80,8 +90,10 @@ def describe_route(
             module=source.module_name if source is not None else None,
             file=source.path if source is not None else None,
             runnable=command is not None,
+            effect=command.effect if command is not None else None,
             children=children,
             _command=command,
+            _structured=structured,
         )
     return RouteInfo(
         name=route.name,
@@ -91,7 +103,9 @@ def describe_route(
         module=route.source.module_name,
         file=route.source.path,
         runnable=True,
+        effect=route.effect,
         _command=route,
+        _structured=structured,
     )
 
 
@@ -114,3 +128,31 @@ def _parameter_info(parameter: ParameterDescriptor) -> ParameterInfo:
         option=option,
         negative=negative,
     )
+
+
+def catalog_node(route: RouteInfo) -> dict[str, object]:
+    """記述を、JSONへ変換できるコマンド一覧へ変換する。直接実行できるcommandを読み込む。"""
+
+    return {
+        "name": route.name,
+        "path": " ".join(route.path),
+        "help": route.help,
+        "command_help": route.command_help,
+        "runnable": route.runnable,
+        "effect": route.effect,
+        "parameters": [
+            {
+                "name": parameter.name,
+                "type": parameter.type,
+                "kind": parameter.kind,
+                "required": parameter.required,
+                "variadic": parameter.variadic,
+                "default": parameter.default,
+                "help": parameter.help,
+                "option": parameter.option,
+                "negative": parameter.negative,
+            }
+            for parameter in route.parameters()
+        ],
+        "commands": [catalog_node(child) for child in route.children],
+    }

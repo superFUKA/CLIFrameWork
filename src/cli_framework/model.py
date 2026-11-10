@@ -34,6 +34,10 @@ class CommandDescriptor:
     name: str
     source: SourceDescriptor
     help_text: str | None = None
+    effect: str | None = None
+    effect_source: SourceDescriptor | None = None
+    render: SourceDescriptor | None = None
+    render_async: bool = False
 
 
 @dataclass(frozen=True, slots=True)
