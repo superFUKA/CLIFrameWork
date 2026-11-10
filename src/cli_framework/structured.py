@@ -87,3 +87,11 @@ def encode(document: dict[str, object]) -> str:
     """標準出力へ出す1行のJSONへ変換する。変換できない値はTypeErrorになる。"""
 
     return json.dumps(document, ensure_ascii=False)
+
+
+def default_text(result: object) -> str | None:
+    """render関数のないcommandの結果を、人向けの文字にする。"""
+
+    if result is None or isinstance(result, str):
+        return result
+    return json.dumps(result, ensure_ascii=False, indent=2)

@@ -180,7 +180,7 @@ tool --help --json              # コマンド一覧
   - 定義エラー：`definition_error`、終了コード1。その他の例外：`unexpected`、終了コード1。
   - 非ゼロの`int`を返した場合：`exit_code`、終了コードはその値。
   - JSONへ変換できない結果は`unexpected`です。
-- `--json`を指定しない実行では、同じモジュールのトップレベルに`render(result)`があれば、その戻り値（`str`または`None`）を標準出力へ出力します。`render`はcommandの直後、teardownの前に実行します。`render`がなければ結果を表示しません。`CommandError`は標準エラーへ「エラー: …」（`hint`があれば次の行）を出力します。
+- `--json`を指定しない実行では、同じモジュールのトップレベルに`render(result)`があれば、その戻り値（`str`または`None`）を標準出力へ出力します。`render`はcommandの直後、teardownの前に実行します。`render`がなければ、結果を既定の形で表示します：文字列はそのまま、`None`は何も出さず、それ以外は字下げしたJSONです。`CommandError`は標準エラーへ「エラー: …」（`hint`があれば次の行）を出力します。
 - `--json`はOption名として予約します。Option`--json`または`--no-json`になる引数は定義エラーです。`json`という名前の位置引数は利用できます。
 - commandは`current_context().json`で、`--json`が指定されたかを確認できます。`--json`の実行では、command自身は標準出力へ書き込まないでください。
 - 直接実行できるすべてのcommandは、モジュールのトップレベルに重さ`EFFECT`を文字列リテラルで宣言します：`"read"`（何も変えない）・`"change"`（変える）・`"confirm"`（変える前に人の確認が要る）。グループの既定commandは`__init__.py`に書きます。

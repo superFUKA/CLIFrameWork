@@ -19,6 +19,7 @@ from .parameters import ParameterDescriptor, inspect_parameters, validate_option
 from .runtime import run_with_lifecycle
 from .structured import (
     JSON_OPTION,
+    default_text,
     encode,
     failure_document,
     success_document,
@@ -190,15 +191,19 @@ def _with_render(
     render: Callable[[object], object] | None,
     as_json: bool,
 ) -> Callable[..., object]:
-    """人向けの表示（render）を、commandの直後・teardownの前に行う。"""
+    """人向けの表示を、commandの直後・teardownの前に行う。
 
-    if render is None or as_json:
+    renderがなければ既定の形（文字列はそのまま、ほかは字下げしたJSON）で表示する。
+    """
+
+    if as_json:
         return command
+    show = render if render is not None else default_text
 
     def invoke(**values: object) -> object:
         result = command(**values)
         if type(result) is not int:
-            text = render(result)
+            text = show(result)
             if text is not None and not isinstance(text, str):
                 raise TypeError(
                     "renderの戻り値はstrまたはNoneである必要があります"

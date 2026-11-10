@@ -170,7 +170,7 @@ class ParameterInfo:
 
 **Option**：`build_click_command`は、引数記述子に`--json`のフラグを追加します。内部の引数名は、利用者の引数名と重複しない名前（`json`、重複すれば`_json`…）にします。Option名の衝突検証（`parameters.validate_option_names`）は、`--help`に加えて`--json`を予約済みとして扱います。
 
-**実行**：`_invoke_structured`は、`run_with_lifecycle(..., allow_data=True, json=…)`でcommandを実行します。`allow_data`は戻り値の型検証を省き、`json`は`Context.json`になります。`render`は、commandを包む関数の中で呼び出し、teardownより前に出力します。`--json`の実行では、ライフサイクルの完了後に`{"ok", "command", "result", "error"}`を1行で出力します。`CommandError`・`DefinitionError`・その他の例外・非ゼロの`int`・変換できない結果は、製品仕様の`code`で失敗のJSONにします。`debug=True`では、その他の例外のtracebackを標準エラーへ出力します。
+**実行**：`_invoke_structured`は、`run_with_lifecycle(..., allow_data=True, json=…)`でcommandを実行します。`allow_data`は戻り値の型検証を省き、`json`は`Context.json`になります。`render`は、commandを包む関数の中で呼び出し、teardownより前に出力します。`render`がないcommandでは、同じ位置で`structured.default_text`（文字列はそのまま、`None`は出力なし、それ以外は字下げしたJSON）を使います。`--json`の実行では、ライフサイクルの完了後に`{"ok", "command", "result", "error"}`を1行で出力します。`CommandError`・`DefinitionError`・その他の例外・非ゼロの`int`・変換できない結果は、製品仕様の`code`で失敗のJSONにします。`debug=True`では、その他の例外のtracebackを標準エラーへ出力します。
 
 **用法エラー**：ルートの`RouteGroup.main`は、`--`より前の引数に`--json`があるかを記録します。Clickの用法例外を表示する処理（`JapaneseCommandMixin.show_error`）をルートで差し替え、記録があれば日本語の本文を`usage_error`のJSONとして標準出力へ出力します。終了コードはClickの値（2）のままです。ルート実行で捕捉する`DefinitionError`も同様に`definition_error`のJSONにします。
 

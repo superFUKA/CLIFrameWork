@@ -117,7 +117,10 @@ def test_without_json_the_render_function_writes_for_people(
     helped = runner.invoke(cli, ["files", "list", "--help"])
 
     assert (listed.exit_code, listed.stdout) == (0, "a.txt\nb.txt\nteardown\n")
-    assert (added.exit_code, added.stdout) == (0, "teardown\n")  # renderがなければ何も出さない
+    # renderがなければ、結果を既定の形（字下げしたJSON）で表示する
+    assert added.exit_code == 0 and added.stdout.endswith("teardown\n")
+    assert json.loads(added.stdout[: -len("teardown\n")]) == {"name": "c.txt", "tags": [], "count": 1, "json": False}
+    assert added.stdout.startswith('{\n  "name": "c.txt"')
     assert (synced.exit_code, synced.stdout) == (0, "done\nteardown\n")
     assert "--json" in helped.stdout and "結果をJSONで出力します。" in helped.stdout
     assert "--no-json" not in helped.stdout
@@ -228,7 +231,8 @@ def test_help_json_prints_the_catalog_of_the_addressed_route(
     assert [p["option"] for p in sync["parameters"]] == ["--force"]
     assert [node["path"] for node in sync["commands"]] == ["sync abort"]
     # `--`より後ろは値：一覧ではなく、ふつうに実行する
-    assert (as_values.exit_code, as_values.stdout) == (0, "teardown\n")
+    assert as_values.exit_code == 0
+    assert json.loads(as_values.stdout[: -len("teardown\n")])["tags"] == ["--json"]
 
 
 def test_json_is_reserved_only_as_an_option_name(
@@ -272,6 +276,25 @@ def test_static_definition_errors_are_raised_by_create_cli(
 
     assert "structured_static.run" in str(error.value)
     create_cli(package, name="tool")  # 構造化出力を使わないCLIは、これらの定義を検証しない
+
+
+def test_default_text_for_commands_without_render(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    runner = CliRunner()
+    cli = _cli(monkeypatch, tmp_path, "structured_default", {
+        "text.py": 'EFFECT = "read"\n\ndef command() -> str:\n    return "そのまま"\n',
+        "nothing.py": 'EFFECT = "read"\n\ndef command() -> None:\n    pass\n',
+        "flag.py": 'EFFECT = "read"\n\ndef command() -> bool:\n    return True\n',
+        "odd.py": 'EFFECT = "read"\n\ndef command() -> object:\n    return {1, 2}\n',
+    })
+
+    assert runner.invoke(cli, ["text"]).stdout == "そのまま\n"  # 文字列は、そのまま
+    assert runner.invoke(cli, ["nothing"]).stdout == ""  # 結果がなければ、何も出さない
+    assert runner.invoke(cli, ["flag"]).stdout == "true\n"
+    odd = runner.invoke(cli, ["odd"])
+    assert odd.exit_code == 1 and "エラー:" in odd.stderr  # JSONへ変換できない結果は、アプリケーションエラー
 
 
 def test_render_must_accept_the_result_and_return_text(
